@@ -108,3 +108,57 @@ function find_intersections(
 
     return rel_areas
 end
+
+"""
+    rotate_geom(geom, degrees::Float64)
+
+Rotate a polygon geometry by `degrees` in the clockwise direction.
+
+# Arguments
+- `geom` : Geometry to rotate. ArchGDAL or GeometryOPs origin.
+- `degrees` : Angle in degrees to rotate by (clockwise rotation).
+"""
+function rotate_geom(geom, degrees::Float64)
+    degrees == 0.0 && return geom
+
+    theta = deg2rad(degrees)
+    sinang, cosang = sincos(theta)
+
+    # Center is used as pivot point
+    cx, cy = GO.centroid(geom)
+
+    # Extract points
+    new_points = GI.coordinates(geom)
+    #new_points = get_points(geom)
+
+    rotate_point(p) = begin
+        x, y = p
+        x -= cx
+        y -= cy
+        new_x = x * cosang - y * sinang + cx
+        new_y = x * sinang + y * cosang + cy
+        SVector(new_x, new_y)
+    end
+
+    # Calculate new coordinates of each vertex
+    @inbounds @simd for i in eachindex(new_points)
+        new_points[i] = rotate_point(new_points[i])
+    end
+
+    return create_poly(new_points, GI.crs(geom))
+end
+
+"""
+    move_geom(geom, new_centroid::Tuple)
+
+Move a geom to a new centroid.
+
+# Arguments
+- `geom` : geometry to move
+- `new_centroid` : Centroid given in lon, lat
+"""
+function move_geom(geom, new_centroid::Tuple)
+    tf_lon, tf_lat = new_centroid .- GO.centroid(geom)
+    f = CoordinateTransformations.Translation(tf_lon, tf_lat)
+    return GO.transform(f, geom)
+end
