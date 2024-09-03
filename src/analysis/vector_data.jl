@@ -162,3 +162,30 @@ function move_geom(geom, new_centroid::Tuple)
     f = CoordinateTransformations.Translation(tf_lon, tf_lat)
     return GO.transform(f, geom)
 end
+
+"""
+    find_horiz(geom)
+
+Locate the first horizontal line contained in `geom`.
+"""
+function find_horiz(geom)
+    coords = collect(GI.coordinates(geom)...)
+    first_coord = first(coords)
+    second_coord = coords[
+        (getindex.(coords, 2) .∈ first_coord[2]) .&&
+        (getindex.(coords, 1) .∉ first_coord[1])
+    ]
+
+    return [tuple(first_coord...), tuple(first(second_coord)...)]
+end
+
+"""
+    angle_cust(a, b)
+
+Find the angle between vectors `a` and `b`.
+When using for geospatial processing it is recommended to use `from_zero` function first,
+particularly when using a meters projection system.
+"""
+function angle_cust(a, b)
+    return acosd(clamp(a⋅b/(norm(a)*norm(b)), -1, 1))
+end
