@@ -28,10 +28,15 @@ include("analysis/plotting.jl")
 
 export
     to_multipolygon,
-    to_dataframe
-    set_consistent_missingval
-    remove_orphaned_elements
-    plot_map
-    plot_map!
-    plot_lines
+    to_dataframe,
+    set_consistent_missingval,
+    remove_orphaned_elements,
+    plot_map,
+    plot_map!,
+    plot_lines,
+    simplify_exclusions!,
+    buffer_exclusions!,
+    unionize_overlaps
+
+
 end

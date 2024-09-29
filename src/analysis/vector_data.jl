@@ -189,3 +189,77 @@ particularly when using a meters projection system.
 function angle_cust(a, b)
     return acosd(clamp(a⋅b/(norm(a)*norm(b)), -1, 1))
 end
+
+"""
+    simplify_exclusions!(exclusions::DataFrame, simplify_tol::Real)::DataFrame
+
+Simplify exclusions by applying convex hull, and simplification operations to polygons.
+
+# Arguments
+- `exclusions::DataFrame`: The DataFrame containing exclusion zones.
+- `simplify_tol::Real`: The tolerance value for simplifying the exclusion polygons. Default = 0.1
+"""
+function simplify_exclusions!(exclusions::DataFrame; simplify_tol::Real)
+    exclusions.geometry .= AG.convexhull.(exclusions.geometry)
+    exclusions.geometry .= AG.simplify.(exclusions.geometry, simplify_tol)
+    return exclusions
+end
+
+"""
+    buffer_exclusions!(exclusions::DataFrame, buffer_dist::Real)::DataFrame
+
+Buffer exclusion zones by a specified distance.
+
+# Arguments
+- `exclusions::DataFrame`: The DataFrame containing exclusion zones.
+- `buffer_dist::Real`: The buffer distance. Default = 1.0
+"""
+function buffer_exclusions!(exclusions::DataFrame; buffer_dist::Real)
+    exclusions.geometry .= AG.buffer.(exclusions.geometry, buffer_dist)
+    return exclusions
+end
+
+"""
+    unionize_overlaps!(exclusions::DataFrame)::DataFrame
+
+Unionize overlapping exclusion zones.
+
+# Arguments
+- `exclusions::DataFrame`: The DataFrame containing exclusion zones.
+"""
+function unionize_overlaps!(exclusions::DataFrame)
+    geometries = exclusions.geometry
+    n = length(geometries)
+
+    for i in 1:n
+        geom1 = geometries[i]
+
+        for j in i+1:n
+            geom2 = geometries[j]
+
+            if AG.overlaps(geom1, geom2)
+                union_geom = AG.union(geom1, geom2)
+                exclusions.geometry[i] = union_geom
+                exclusions.geometry[j] = union_geom
+
+                for k in 1:n
+                    if AG.overlaps(union_geom, geometries[k])
+                        exclusions.geometry[k] = union_geom
+                    end
+                end
+            end
+
+            if AG.contains(geom1, geom2)
+                exclusions.geometry[j] = geom1
+            elseif AG.contains(geom2, geom1)
+                exclusions.geometry[i] = geom2
+            end
+        end
+    end
+
+    # Remove duplicate unionized geometries
+    unique_geometries = unique(exclusions.geometry[.!AG.isempty.(exclusions.geometry)])
+    exclusions = DataFrame(geometry = unique_geometries)
+
+    return exclusions
+end
