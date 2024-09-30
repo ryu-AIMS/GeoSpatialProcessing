@@ -263,3 +263,21 @@ function unionize_overlaps!(exclusions::DataFrame)
 
     return exclusions
 end
+
+"""
+    polygon_to_lines(
+        polygon::Union{Vector{T},T,GIWrap.MultiPolygon}
+    ) where {T<:GIWrap.Polygon}
+
+Extract the individual lines between vertices that make up the outline of a polygon.
+"""
+function polygon_to_lines(
+    polygon::Union{Vector{T},T,GIWrap.MultiPolygon}
+) where {T<:GIWrap.Polygon}
+    poly_lines = [
+        GO.LineString(GO.Point.(vcat(GI.getpoint(geometry)...)))
+        for geometry in polygon.geom
+    ]
+
+    return vcat(poly_lines...)
+end
